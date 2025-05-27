@@ -24,9 +24,25 @@
     };
   };
 
-  outputs = { nixpkgs, flake-utils, uv2nix, pyproject-nix
+  outputs = { self, nixpkgs, flake-utils, uv2nix, pyproject-nix
     , pyproject-build-systems, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
+    let
+      # Define the NixOS module for all systems
+      nixosModule = { config, pkgs, lib, ... }: {
+        imports = [ ./nixos ];
+        
+        # Setup the service to use our package
+        config = lib.mkIf config.services.archive-mirror.enable {
+          services.archive-mirror.package = self.packages.${pkgs.system}.default;
+        };
+      };
+    in {
+      # Export the NixOS module
+      nixosModules.default = nixosModule;
+      
+      # Compatibility with the older module attribute
+      nixosModule = nixosModule;
+    } // flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = (import nixpkgs { inherit system; });
 
