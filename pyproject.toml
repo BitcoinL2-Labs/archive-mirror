@@ -1,0 +1,33 @@
+[project]
+name = "archive-mirror"
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "httpx>=0.27.0",
+  "tqdm>=4.66.1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3.5", "pytest-mock>=3.12.0"]
+
+[project.scripts]
+mirror = "mirror:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+select = ["E", "F", "B", "I", "N", "UP", "ANN", "FBT", "A", "COM", "C4", "T10", "EM", "FA", "ISC", "ICN", "G", "INP", "PIE", "T20", "PYI", "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "INT", "ARG", "ERA", "PGH", "PL", "TRY", "RUF"]
+ignore = []
+
+[tool.basedpyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
