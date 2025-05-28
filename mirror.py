@@ -125,22 +125,22 @@ def fetch_file(url: str, output_path: Path, hash_url: str) -> bool:
     os.makedirs(output_dir, exist_ok=True)
 
     # Use a consistent temporary file name with .downloading suffix as a lock
-    temp_path = output_path.with_suffix(output_path.suffix + ".downloading")
+    downloading_path = output_path.with_suffix(output_path.suffix + ".downloading")
 
     # Check if another process is already downloading this file
-    if temp_path.exists():
+    if downloading_path.exists():
         logging.info(
             "Another process is already downloading %s (lock file %s exists)",
             url,
-            temp_path,
+            downloading_path,
         )
         return False
 
-    logging.info("Creating temporary file at %s", temp_path)
+    logging.info("Creating temporary file at %s", downloading_path)
     logging.info("Will download to %s after verification", output_path)
 
     # Create the temporary file
-    with open(temp_path, "wb") as temp_file:
+    with open(downloading_path, "wb") as temp_file:
         # Stream the file to disk to avoid loading the entire file into memory
         sha256 = hashlib.sha256()
         success = False
@@ -196,8 +196,12 @@ def fetch_file(url: str, output_path: Path, hash_url: str) -> bool:
             success = True
 
             # Move the temporary file to the final destination
-            logging.info("Moving temporary file from %s to %s", temp_path, output_path)
-            shutil.move(temp_path, output_path)
+            logging.info(
+                "Moving temporary file from %s to %s",
+                downloading_path,
+                output_path,
+            )
+            shutil.move(downloading_path, output_path)
 
             # Store the hash in cache file with proper format
             logging.info("Saving hash to %s", hash_cache_path)
@@ -209,9 +213,9 @@ def fetch_file(url: str, output_path: Path, hash_url: str) -> bool:
 
         finally:
             # Clean up the temporary file if something went wrong
-            if not success and temp_path.exists():
-                logging.info("Cleaning up temporary file %s", temp_path)
-                os.unlink(temp_path)
+            if not success and downloading_path.exists():
+                logging.info("Cleaning up temporary file %s", downloading_path)
+                os.unlink(downloading_path)
 
 
 def main() -> int:
@@ -249,7 +253,7 @@ def main() -> int:
         logging.getLogger().setLevel(logging.INFO)
 
     # Convert output path to Path object
-    output_path = Path(args.output_path)
+    output_path = Path(args.output_path).resolve()
 
     logging.info("Starting download of %s to %s", args.url, output_path)
     logging.info("Using hash URL: %s", args.hash_url)
