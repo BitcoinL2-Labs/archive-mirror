@@ -7,6 +7,7 @@ A reliable file mirroring tool that downloads and verifies files based on their 
 - Downloads files from HTTP(S) sources
 - Verifies file integrity using SHA256 hashes
 - Only downloads when files have changed (hash-based)
+- Safe concurrent operation with download locking
 - Progress bar with download speed and ETA
 - NixOS module for automatic periodic downloads
 - Hardened systemd services with security confinement
@@ -28,6 +29,17 @@ mirror -v https://example.com/file.tar.gz /path/to/save/file.tar.gz https://exam
 # Quiet mode (only errors)
 mirror -q https://example.com/file.tar.gz /path/to/save/file.tar.gz https://example.com/file.tar.gz.sha256
 ```
+
+### Safe Concurrent Operation
+
+The tool uses a file locking mechanism to prevent concurrent downloads of the same file:
+
+- When a download starts, a lock file with the `.downloading` suffix is created
+- If another process tries to download the same file, it detects the lock file and skips the download
+- The lock file is automatically removed when the download completes or fails
+- This ensures that multiple instances (e.g., from timer-triggered services) won't conflict
+
+Example lock file path: `/path/to/save/file.tar.gz.downloading`
 
 ### NixOS Module
 

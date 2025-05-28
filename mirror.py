@@ -5,7 +5,6 @@ import logging
 import os
 import shutil
 import sys
-import tempfile
 from http import HTTPStatus
 from pathlib import Path
 
@@ -72,7 +71,7 @@ def fetch_file(url: str, output_path: Path, hash_url: str) -> bool:
     logging.debug("URL: %s", url)
     logging.debug("Output path: %s", output_path)
     logging.debug("Hash URL: %s", hash_url)
-    
+
     if not hash_url:
         msg = "hash_url must be provided"
         raise ValueError(msg)
@@ -110,24 +109,38 @@ def fetch_file(url: str, output_path: Path, hash_url: str) -> bool:
 
             if cached_hash == expected_hash:
                 logging.info(
-                    "File %s hasn't changed (hash match), skipping download", url,
+                    "File %s hasn't changed (hash match), skipping download",
+                    url,
                 )
                 return False
         except (OSError, ValueError):
             # If we can't read the hash cache or it's invalid, continue with download
             logging.warning(
-                "Could not read hash cache at %s, will download file", hash_cache_path,
+                "Could not read hash cache at %s, will download file",
+                hash_cache_path,
             )
 
-    # Create a temporary file in the same directory as the output file
-    temp_dir = output_path.parent
-    os.makedirs(temp_dir, exist_ok=True)
+    # Create the output directory if it doesn't exist
+    output_dir = output_path.parent
+    os.makedirs(output_dir, exist_ok=True)
 
-    with tempfile.NamedTemporaryFile(dir=temp_dir, delete=False) as temp_file:
-        temp_path = Path(temp_file.name)
-        logging.info("Created temporary file at %s", temp_path)
-        logging.info("Will download to %s after verification", output_path)
+    # Use a consistent temporary file name with .downloading suffix as a lock
+    temp_path = output_path.with_suffix(output_path.suffix + ".downloading")
 
+    # Check if another process is already downloading this file
+    if temp_path.exists():
+        logging.info(
+            "Another process is already downloading %s (lock file %s exists)",
+            url,
+            temp_path,
+        )
+        return False
+
+    logging.info("Creating temporary file at %s", temp_path)
+    logging.info("Will download to %s after verification", output_path)
+
+    # Create the temporary file
+    with open(temp_path, "wb") as temp_file:
         # Stream the file to disk to avoid loading the entire file into memory
         sha256 = hashlib.sha256()
         success = False
@@ -141,16 +154,18 @@ def fetch_file(url: str, output_path: Path, hash_url: str) -> bool:
                 # If there was an error, bail
                 if response.status_code != HTTPStatus.OK:
                     logging.error(
-                        "Error fetching %s: %s", url, response.status_code,
+                        "Error fetching %s: %s",
+                        url,
+                        response.status_code,
                     )
                     return False
-                
+
                 # Get total size if available
                 total_size = int(response.headers.get("content-length", 0)) or None
-                
+
                 # Set up progress bar description
                 desc = f"Downloading {url.split('/')[-1]}"
-                
+
                 # Use progress bar for streaming download
                 with tqdm(
                     total=total_size,
@@ -165,6 +180,8 @@ def fetch_file(url: str, output_path: Path, hash_url: str) -> bool:
                         temp_file.write(chunk)
                         sha256.update(chunk)
                         progress_bar.update(len(chunk))
+                        # Ensure data is written to disk
+                        temp_file.flush()
 
             # Verify hash
             downloaded_hash = sha256.hexdigest()
@@ -200,22 +217,28 @@ def fetch_file(url: str, output_path: Path, hash_url: str) -> bool:
 def main() -> int:
     """Main function to mirror a file."""
     import argparse
-    
+
     # Set up argument parser
     parser = argparse.ArgumentParser(description="Mirror a file with hash verification")
     parser.add_argument("url", help="URL of the file to download")
     parser.add_argument("output_path", help="Path where to save the file")
     parser.add_argument("hash_url", help="URL of the file containing the hash")
     parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose logging",
     )
     parser.add_argument(
-        "-q", "--quiet", action="store_true", help="Suppress all output except errors"
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Suppress all output except errors",
     )
-    
+
     # Parse arguments
     args = parser.parse_args()
-    
+
     # Configure log level based on verbosity flags
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
@@ -224,23 +247,24 @@ def main() -> int:
         logging.getLogger().setLevel(logging.ERROR)
     else:
         logging.getLogger().setLevel(logging.INFO)
-    
+
     # Convert output path to Path object
     output_path = Path(args.output_path)
-    
+
     logging.info("Starting download of %s to %s", args.url, output_path)
     logging.info("Using hash URL: %s", args.hash_url)
-    
+
     try:
         result = fetch_file(args.url, output_path, args.hash_url)
         if result:
             logging.info("File successfully updated")
         else:
             logging.info("No update needed (file unchanged)")
-        return 0
     except Exception:
         logging.exception("Error occurred during file download")
         return 1
+    else:
+        return 0
 
 
 if __name__ == "__main__":
