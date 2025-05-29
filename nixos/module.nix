@@ -5,6 +5,8 @@ with lib;
 let
   cfg = config.services.archive-mirror;
 
+  createName = name: "stacks-archive-mirror-${name}";
+
   # Helper function to create a mirror service
   createMirrorService = name: mirrorCfg:
     let
@@ -13,11 +15,11 @@ let
         "${cfg.package}/bin/mirror ${mirrorCfg.url} ${mirrorCfg.outputPath} ${mirrorCfg.hashUrl}";
 
       # Service name
-      serviceName = "archive-mirror-${name}";
+      serviceName = createName name;
     in {
       # Define the systemd service
       "${serviceName}" = {
-        description = "Archive Mirror Service for ${mirrorCfg.url}";
+        description = "Stacks Archive Mirror Service for ${mirrorCfg.url}";
 
         # Service configuration
         serviceConfig = {
@@ -26,68 +28,35 @@ let
           User = mirrorCfg.user;
           Group = mirrorCfg.group;
 
-          # File system restrictions
-          ProtectSystem = "strict";
-          ProtectHome = true;
-          PrivateTmp = true;
-          PrivateDevices = true;
-          ProtectKernelTunables = true;
-          ProtectKernelModules = true;
-          ProtectControlGroups = true;
-          RestrictNamespaces = true;
-
-          # Process restrictions
-          NoNewPrivileges = true;
-          RestrictRealtime = true;
-          MemoryDenyWriteExecute = true;
-          LockPersonality = true;
-          RestrictSUIDSGID = true;
-          ProtectHostname = true;
-          ProtectClock = true;
-          ProtectProc = "invisible";
-          ProcSubset = "pid";
-
-          # Capability restrictions
-          CapabilityBoundingSet = "";
-
-          # Only allow network access (for HTTP downloads)
-          PrivateNetwork = false;
-          RestrictAddressFamilies = "AF_INET AF_INET6";
-          IPAddressAllow = "any";
-
-          # Only allow writing to the output directory
-          ReadWritePaths = [
-            # Allow writing to the output directory
-            (dirOf mirrorCfg.outputPath)
-          ];
+          PrivateTmp = "true";
+          ProtectSystem = "full";
+          NoNewPrivileges = "true";
+          PrivateDevices = "true";
+          MemoryDenyWriteExecute = "true";
 
           # Create the output directory if it doesn't exist
           ExecStartPre =
             [ "${pkgs.coreutils}/bin/mkdir -p ${dirOf mirrorCfg.outputPath}" ];
-
-          # Sandbox settings
-          SystemCallFilter = [
-            "@system-service"
-            "~@privileged @resources"
-            # Allow necessary networking syscalls for HTTP requests
-            "connect"
-            "socket"
-            "bind"
-          ];
-          SystemCallArchitectures = "native";
         };
       };
+    };
 
+  createMirrorTimer = name: mirrorCfg:
+    let
+      # Service name
+      serviceName = createName name;
+    in {
       # Define the timer
-      "archive-mirror-${name}-timer" = {
-        description = "Timer for Archive Mirror Service (${mirrorCfg.url})";
+      "${serviceName}-timer" = {
+        description =
+          "Timer for Stacks Archive Mirror Service (${mirrorCfg.url})";
 
         # Define the timer configuration
         timerConfig = {
           OnBootSec = "1min";
           OnUnitActiveSec = mirrorCfg.interval;
           RandomizedDelaySec = "30s";
-          Unit = "archive-mirror-${name}.service";
+          Unit = "${serviceName}.service";
         };
 
         # Enable the timer
@@ -97,7 +66,7 @@ let
 in {
   # Module options
   options.services.archive-mirror = {
-    enable = mkEnableOption "Enable Archive Mirror services";
+    enable = mkEnableOption "Enable Stacks Archive Mirror services";
 
     package = mkOption {
       type = types.package;
@@ -156,7 +125,7 @@ in {
     systemd.services = mkMerge (mapAttrsToList createMirrorService cfg.mirrors);
 
     # Create a systemd timer for each mirror
-    systemd.timers = mkMerge (mapAttrsToList createMirrorService cfg.mirrors);
+    systemd.timers = mkMerge (mapAttrsToList createMirrorTimer cfg.mirrors);
   };
 }
 

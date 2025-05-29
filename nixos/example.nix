@@ -13,8 +13,8 @@
   services.archive-mirror = {
     enable = true;
     
-    # Uncomment this in a real configuration
-    # package = pkgs.archive-mirror;
+    # This is required in a real configuration
+    package = pkgs.archive-mirror;
     
     # Define mirrors to download
     mirrors = {

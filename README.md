@@ -75,6 +75,9 @@ This project includes a NixOS module that allows you to set up periodic file mir
   services.archive-mirror = {
     enable = true;
     
+    # Required - specify the package to use
+    package = pkgs.archive-mirror;
+    
     mirrors = {
       # Example: download the stacks blockchain archive
       stacks-blockchain = {
@@ -136,33 +139,16 @@ Each mirror configuration will create:
 
 ### Security Features
 
-The NixOS module implements extensive security hardening for the systemd services:
+The NixOS module implements security hardening for the systemd services:
 
 #### Filesystem Restrictions
-- `ProtectSystem = "strict"`: Mounts `/usr` and `/boot` as read-only, makes `/etc` inaccessible
-- `ProtectHome = true`: Makes home directories inaccessible
-- `PrivateTmp = true`: Uses a private `/tmp` directory
-- `ReadWritePaths`: Only allows writing to the configured output directory
+- `ProtectSystem = "full"`: Mounts `/usr` and `/boot` as read-only
+- `PrivateTmp = "true"`: Uses a private `/tmp` directory
 
 #### Process Isolation
-- `PrivateDevices = true`: Blocks access to physical devices
-- `ProtectKernelTunables/Modules/ControlGroups`: Restricts kernel access
-- `RestrictNamespaces = true`: Prevents creating namespaces
-- `NoNewPrivileges = true`: Prevents gaining new privileges
-- `MemoryDenyWriteExecute = true`: Prevents memory that is both writable and executable
-- `ProcSubset = "pid"`: Limits the visible `/proc` filesystem to only PIDs
-
-#### Network Restrictions
-- `RestrictAddressFamilies = "AF_INET AF_INET6"`: Only allows IPv4/IPv6 networking
-- `PrivateNetwork = false`: Network access is allowed (needed for HTTP downloads)
-- `IPAddressAllow = "any"`: Allows connecting to any IP address
-
-#### System Call Filtering
-- Uses `SystemCallFilter` to restrict syscalls to only those needed:
-  - `@system-service`: Allows basic system service calls
-  - `~@privileged @resources`: Blocks privileged and resource management calls
-  - Explicitly allows necessary networking syscalls (`connect`, `socket`, `bind`)
-- `SystemCallArchitectures = "native"`: Prevents using non-native architectures for syscalls
+- `PrivateDevices = "true"`: Blocks access to physical devices
+- `NoNewPrivileges = "true"`: Prevents gaining new privileges
+- `MemoryDenyWriteExecute = "true"`: Prevents memory that is both writable and executable
 
 These security measures ensure that even if the service is compromised, the damage is limited to the output directory. The service runs with minimal privileges and access to system resources.
 
