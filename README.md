@@ -1,22 +1,15 @@
 # Archive Mirror
 
-A reliable file mirroring tool that downloads and verifies files based on their hashes.
-
-## Features
-
-- Downloads files from HTTP(S) sources
-- Verifies file integrity using SHA256 hashes
-- Only downloads when files have changed (hash-based)
-- Safe concurrent operation with download locking
-- Progress bar with download speed and ETA
-- NixOS module for automatic periodic downloads
-- Hardened systemd services with security confinement
+Mirror remote HTTP files by downloading them and verifying their hashes.
 
 ## Usage
 
 ### Command Line
 
 ```bash
+# With uv
+uv run mirror.py <url> <output_path> <hash_url>
+
 # Basic usage
 mirror <url> <output_path> <hash_url>
 
@@ -30,7 +23,7 @@ mirror -v https://example.com/file.tar.gz /path/to/save/file.tar.gz https://exam
 mirror -q https://example.com/file.tar.gz /path/to/save/file.tar.gz https://example.com/file.tar.gz.sha256
 ```
 
-### Safe Concurrent Operation
+### Locking
 
 The tool uses a file locking mechanism to prevent concurrent downloads of the same file:
 
@@ -133,24 +126,10 @@ This project includes a NixOS module that allows you to set up periodic file mir
 | `mirrors.<name>.group` | Group to run the service as | `"nogroup"` | `"archive-mirror"` |
 
 Each mirror configuration will create:
+
 1. A systemd service that performs the download
 2. A systemd timer that runs the service periodically
 3. A properly sandboxed execution environment with minimal privileges
-
-### Security Features
-
-The NixOS module implements security hardening for the systemd services:
-
-#### Filesystem Restrictions
-- `ProtectSystem = "full"`: Mounts `/usr` and `/boot` as read-only
-- `PrivateTmp = "true"`: Uses a private `/tmp` directory
-
-#### Process Isolation
-- `PrivateDevices = "true"`: Blocks access to physical devices
-- `NoNewPrivileges = "true"`: Prevents gaining new privileges
-- `MemoryDenyWriteExecute = "true"`: Prevents memory that is both writable and executable
-
-These security measures ensure that even if the service is compromised, the damage is limited to the output directory. The service runs with minimal privileges and access to system resources.
 
 ## Development
 
@@ -174,3 +153,4 @@ pytest
 ## License
 
 MIT
+

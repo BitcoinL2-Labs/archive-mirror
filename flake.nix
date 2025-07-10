@@ -30,16 +30,17 @@
       # Define the NixOS module for all systems
       nixosModule = { config, pkgs, lib, ... }: {
         imports = [ ./nixos ];
-        
+
         # Setup the service to use our package
         config = lib.mkIf config.services.archive-mirror.enable {
-          services.archive-mirror.package = self.packages.${pkgs.system}.default;
+          services.archive-mirror.package =
+            self.packages.${pkgs.system}.default;
         };
       };
     in {
       # Export the NixOS module
       nixosModules.default = nixosModule;
-      
+
       # Compatibility with the older module attribute
       nixosModule = nixosModule;
     } // flake-utils.lib.eachDefaultSystem (system:
@@ -151,9 +152,8 @@
             # Build virtual environment, with local packages being editable.
             #
             # Enable all optional dependencies for development.
-            virtualenv =
-              (editablePythonSet.mkVirtualEnv "archive-mirror-dev"
-                workspace.deps.all).overrideAttrs (old: venvOverrideAttrs old);
+            virtualenv = (editablePythonSet.mkVirtualEnv "archive-mirror-dev"
+              workspace.deps.all).overrideAttrs (old: venvOverrideAttrs old);
           in pkgs.mkShell {
             packages = [ virtualenv ] ++ devPackages;
 
@@ -177,3 +177,4 @@
         };
       });
 }
+

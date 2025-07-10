@@ -11,7 +11,7 @@ from pathlib import Path
 import httpx
 from tqdm.auto import tqdm
 
-# Configure logging to output to stdout
+# Configure logging to output to standard output
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -21,29 +21,10 @@ logging.basicConfig(
 
 
 def get_hash_cache_path(output_path: Path) -> Path:
-    """Get the path to the hash cache file.
-
-    Args:
-        output_path: Path to the main file
-
-    Returns:
-        Path: Path to the hash cache file
-    """
     return output_path.with_suffix(".sha256")
 
 
 def parse_hash_file(content: str) -> str:
-    """Parse the hash from a sha256 file.
-
-    Args:
-        content: The content of the hash file
-
-    Returns:
-        str: The hash value
-
-    Raises:
-        ValueError: If the hash file format is invalid
-    """
     parts = content.strip().split()
     if not parts:
         msg = "Empty hash file"
@@ -54,27 +35,13 @@ def parse_hash_file(content: str) -> str:
 
 
 def fetch_file(url: str, output_path: Path, hash_url: str) -> bool:
-    """Fetch a file from URL and store it locally if it has changed.
-
-    Args:
-        url: The URL to fetch the file from
-        output_path: The path where to save the file
-        hash_url: URL to a file containing the hash
-
-    Returns:
-        bool: True if the file was updated, False otherwise
-
-    Raises:
-        ValueError: If hash_url is not provided or if the hash cannot be retrieved
-    """
     logging.debug("Starting fetch_file operation")
     logging.debug("URL: %s", url)
     logging.debug("Output path: %s", output_path)
     logging.debug("Hash URL: %s", hash_url)
 
     if not hash_url:
-        msg = "hash_url must be provided"
-        raise ValueError(msg)
+        raise ValueError("hash_url must be provided")
 
     # Create parent directory if it doesn't exist
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -124,7 +91,7 @@ def fetch_file(url: str, output_path: Path, hash_url: str) -> bool:
     output_dir = output_path.parent
     os.makedirs(output_dir, exist_ok=True)
 
-    # Use a consistent temporary file name with .downloading suffix as a lock
+    # Use a consistent temporary filename with `.downloading` suffix as a lock
     downloading_path = output_path.with_suffix(output_path.suffix + ".downloading")
 
     # Check if another process is already downloading this file
@@ -219,7 +186,6 @@ def fetch_file(url: str, output_path: Path, hash_url: str) -> bool:
 
 
 def main() -> int:
-    """Main function to mirror a file."""
     import argparse
 
     # Set up argument parser
